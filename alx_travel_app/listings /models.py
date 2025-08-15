@@ -1,34 +1,58 @@
 from django.db import models
-import uuid
-from django.contrib.auth import get_user_model
 
-User = get_user_model()
+# Create your models here.
+class User(models.Model):
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=30)
+    email = models.EmailField(unique=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    role = models.CharField(max_length=20, choices=[('host', 'Host'), ('guest', 'Guest')])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
 
 class Listing(models.Model):
-    property_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_properties')
-    name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
     description = models.TextField()
-    location = models.CharField(max_length=255)
-    pricepernight = models.DecimalField(max_digits=10, decimal_places=2)
+    price_per_night = models.DecimalField(max_digits=8, decimal_places=2)
+    location = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
 
 
 class Booking(models.Model):
-    STATUS_CHOICES = [('pending', 'Pending'), ('confirmed', 'Confirmed'), ('canceled', 'Canceled')]
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='bookings')
+    guest_name = models.CharField(max_length=100)
+    check_in = models.DateField()
+    check_out = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    booking_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    property = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='bookings')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
-    start_date = models.DateField()
-    end_date = models.DateField()
-    total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+
+class Review(models.Model):
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='reviews')
+    reviewer_name = models.CharField(max_length=100)
+    rating = models.PositiveIntegerField()
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Payment(models.Model):
+    STATUS_CHOICES = [
+        ("Pending", "Pending"),
+        ("Completed", "Completed"),
+        ("Failed", "Failed"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    booking_reference = models.CharField(max_length=100, unique=True)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="Pending")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Booking by {self.user.email} for {self.property.name}"
+        return f"{self.booking_reference} - {self.status}"
